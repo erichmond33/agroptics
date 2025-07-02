@@ -14,12 +14,20 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
-    "@types/express": "^5.0.3",
+    "@turf/turf": "^7.2.0",
     "@types/node": "^24.0.10",
+    "axios": "^1.10.0",
+    "cors": "^2.8.5",
     "express": "^5.1.0",
+    "maplibre-gl": "^5.6.1",
     "mysql2": "^3.14.1",
     "nodemon": "^3.1.10",
+    "react-map-gl": "^8.0.4",
     "ts-node": "^10.9.2",
     "typescript": "^5.8.3"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.3"
   }
 }

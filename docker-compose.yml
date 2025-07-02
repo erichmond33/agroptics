@@ -37,5 +37,13 @@ services:
     volumes:
       - mysql_data:/var/lib/mysql
       - ./backend/src/db/init.sql:/docker-entrypoint-initdb.d/init.sql
+  adminer:
+    image: adminer:latest
+    ports:
+      - "8080:8080"
+    depends_on:
+      - db
+    environment:
+      - ADMINER_DEFAULT_SERVER=db
 volumes:
   mysql_data:

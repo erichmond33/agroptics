@@ -8,22 +8,14 @@ function ControlPanel(props) {
   }
 
   return (
-    <div className="control-panel">
-      <h3>Draw Polygon</h3>
+    <div className="absolute top-20 left-4 bg-white text-black p-4 rounded-lg shadow-lg z-10 w-48">
+      <h3 className="text-lg font-semibold mb-2">Draw Polygon</h3>
       {polygonArea > 0 && (
         <p>
           {Math.round(polygonArea * 100) / 100} <br />
           square meters
         </p>
       )}
-      <div className="source-link">
-        <a
-          href="https://github.com/visgl/react-map-gl/tree/8.0-release/examples/mapbox/draw-polygon"
-          target="_new"
-        >
-          View Code ↗
-        </a>
-      </div>
     </div>
   );
 }

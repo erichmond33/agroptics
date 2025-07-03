@@ -1,83 +1,46 @@
-// src/app/map/draw-control.tsx
-import MapboxDraw from '@mapbox/mapbox-gl-draw';
-import { useControl } from 'react-map-gl/maplibre';
-import type { ControlPosition } from 'react-map-gl/maplibre';
-import '@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css'; // Ensure CSS is imported
+// components/DrawControl.ts
+import { Map as MapLibreMap } from 'maplibre-gl';
+import MapboxDraw, {
+  DrawCreateEvent,
+  DrawDeleteEvent,
+  DrawUpdateEvent,
+} from '@mapbox/mapbox-gl-draw';
+import type { FeatureCollection, Polygon } from 'geojson';
 
-type DrawControlProps = ConstructorParameters<typeof MapboxDraw>[0] & {
-  position?: ControlPosition;
-  onCreate?: (evt: { features: object[] }) => void;
-  onUpdate?: (evt: { features: object[]; action: string }) => void;
-  onDelete?: (evt: { features: object[] }) => void;
+type InitDrawControlOptions = {
+  map: MapLibreMap;
+  onUpdate: (polygons: FeatureCollection<Polygon>['features']) => void;
 };
 
-// Custom styles to fix line-dasharray issue
-const drawStyles = [
-  {
-    id: 'gl-draw-line',
-    type: 'line',
-    filter: ['all', ['==', '$type', 'LineString'], ['!=', 'mode', 'static']],
-    layout: {
-      'line-cap': 'round',
-      'line-join': 'round',
+export function initDrawControl({ map, onUpdate }: InitDrawControlOptions): MapboxDraw {
+  const draw = new MapboxDraw({
+    displayControlsDefault: false,
+    controls: {
+      polygon: true,
+      trash: true,
     },
-    paint: {
-      'line-color': '#3bb2d0',
-      'line-width': 2,
-      'line-dasharray': ['literal', [2, 2]], // Use ["literal", [2, 2]] for MapLibre compatibility
-    },
-  },
-  {
-    id: 'gl-draw-polygon',
-    type: 'fill',
-    filter: ['all', ['==', '$type', 'Polygon'], ['!=', 'mode', 'static']],
-    paint: {
-      'fill-color': '#3bb2d0',
-      'fill-outline-color': '#3bb2d0',
-      'fill-opacity': 0.5,
-    },
-  },
-  {
-    id: 'gl-draw-polygon-and-line-vertex',
-    type: 'circle',
-    filter: ['all', ['==', 'meta', 'vertex'], ['==', '$type', 'Point'], ['!=', 'mode', 'static']],
-    paint: {
-      'circle-radius': 5,
-      'circle-color': '#fff',
-      'circle-stroke-color': '#3bb2d0',
-      'circle-stroke-width': 2,
-    },
-  },
-  // Add other necessary styles for points, midpoints, etc.
-];
+    defaultMode: 'simple_select',
+  });
 
-export default function DrawControl(props: DrawControlProps) {
-  useControl<MapboxDraw>(
-    () =>
-      new MapboxDraw({
-        ...props,
-        styles: drawStyles, // Pass custom styles
-      }),
-    ({ map }) => {
-      map.on('draw.create', props.onCreate);
-      map.on('draw.update', props.onUpdate);
-      map.on('draw.delete', props.onDelete);
-    },
-    ({ map }) => {
-      map.off('draw.create', props.onCreate);
-      map.off('draw.update', props.onUpdate);
-      map.off('draw.delete', props.onDelete);
-    },
-    {
-      position: props.position,
-    }
-  );
+  const originalOnAdd = draw.onAdd.bind(draw);
+  draw.onAdd = (mapInstance: MapLibreMap) => {
+    const controlContainer = originalOnAdd(mapInstance);
+    controlContainer.classList.add('maplibregl-ctrl', 'maplibregl-ctrl-group');
+    return controlContainer;
+  };
 
-  return null;
+  map.addControl(draw);
+
+  const updatePolygons = (
+    e: DrawCreateEvent | DrawDeleteEvent | DrawUpdateEvent
+  ) => {
+    const data = draw.getAll() as FeatureCollection<Polygon>;
+    onUpdate(data.features || []);
+  };
+
+  map.on('draw.create', updatePolygons);
+  map.on('draw.delete', updatePolygons);
+  map.on('draw.update', updatePolygons);
+
+  return draw;
 }
-
-DrawControl.defaultProps = {
-  onCreate: () => {},
-  onUpdate: () => {},
-  onDelete: () => {},
-};

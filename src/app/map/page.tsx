@@ -1,125 +1,115 @@
-"use client";
+'use client';
 
-import { useState, useCallback, useEffect, useRef } from 'react';
-import Map from 'react-map-gl/maplibre';
-import maplibregl from 'maplibre-gl';
+import { useEffect, useRef, useState, useCallback } from 'react';
+import maplibregl, { Map as MapLibreMap } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import DrawControl from './draw-control';
+import '@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css';
+
+import type { Feature, FeatureCollection, Polygon } from 'geojson';
+
 import ControlPanel from './control-panel';
+import { initDrawControl } from './draw-control';
 
-export default function App() {
-  const [features, setFeatures] = useState({});
-  const [basemap, setBasemap] = useState('positron');
-  const [viewState, setViewState] = useState({
-    latitude: 37.7577,
-    longitude: -122.4376,
-    zoom: 10,
-  });
-  const mapRef = useRef<any>(null);
-  const drawRef = useRef<any>(null);
+const basemaps = {
+  positron: 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json',
+  satellite: 'https://roblabs.com/xyz-raster-sources/styles/arcgis-world-imagery.json',
+};
 
-  const basemaps = {
-    positron: 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json',
-    satellite: 'https://roblabs.com/xyz-raster-sources/styles/arcgis-world-imagery.json',
-  };
-
-  const onUpdate = useCallback((e: any) => {
-    setFeatures((currFeatures) => {
-      const newFeatures = { ...currFeatures };
-      for (const f of e.features) {
-        newFeatures[f.id] = f;
-      }
-      return newFeatures;
-    });
-  }, []);
-
-  const onDelete = useCallback((e: any) => {
-    setFeatures((currFeatures) => {
-      const newFeatures = { ...currFeatures };
-      for (const f of e.features) {
-        delete newFeatures[f.id];
-      }
-      return newFeatures;
-    });
-  }, []);
+const MapComponent: React.FC = () => {
+  const mapContainer = useRef<HTMLDivElement | null>(null);
+  const map = useRef<MapLibreMap | null>(null);
+  const draw = useRef<mapboxgl.Draw | null>(null);
+  const [polygons, setPolygons] = useState<Feature<Polygon>[]>([]);
+  const [basemap, setBasemap] = useState<keyof typeof basemaps>('positron');
 
   const handleBasemapChange = useCallback((newBasemap: string) => {
-    if (mapRef.current) {
-      const map = mapRef.current.getMap();
-      setViewState({
-        latitude: map.getCenter().lat,
-        longitude: map.getCenter().lng,
-        zoom: map.getZoom(),
-      });
-    }
-    setBasemap(newBasemap);
+    setBasemap(newBasemap as keyof typeof basemaps);
   }, []);
 
-  // Reapply features to DrawControl after basemap change
   useEffect(() => {
-    if (drawRef.current && Object.keys(features).length > 0) {
-      const featureArray = Object.values(features);
-      drawRef.current.set({
-        type: 'FeatureCollection',
-        features: featureArray,
+    if (!mapContainer.current) return;
+
+    map.current = new maplibregl.Map({
+      container: mapContainer.current,
+      style: basemaps[basemap],
+      center: [-91.874, 42.76],
+      zoom: 12,
+    });
+
+    map.current.on('load', () => {
+      if (!map.current) return;
+
+      map.current.getCanvas().className = 'mapboxgl-canvas maplibregl-canvas';
+      map.current.getContainer().classList.add('mapboxgl-map');
+
+      const canvasContainer = map.current.getCanvasContainer();
+      canvasContainer.classList.add('mapboxgl-canvas-container');
+      if (canvasContainer.classList.contains('maplibregl-interactive')) {
+        canvasContainer.classList.add('mapboxgl-interactive');
+      }
+
+      draw.current = initDrawControl({
+        map: map.current,
+        onUpdate: (features) => setPolygons(features),
       });
-    }
-  }, [basemap, features]);
+    });
+
+    return () => {
+      map.current?.remove();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!map.current || !draw.current) return;
+
+    const existingPolygons = draw.current.getAll() as FeatureCollection<Polygon>;
+
+    try {
+      map.current.removeControl(draw.current);
+    } catch {}
+
+    map.current.setStyle(basemaps[basemap]);
+
+    map.current.once('styledata', () => {
+      if (!map.current || !draw.current) return;
+
+      map.current.addControl(draw.current);
+
+      if (existingPolygons?.features?.length) {
+        draw.current.set(existingPolygons);
+      }
+    });
+  }, [basemap]);
 
   return (
-    <div className="relative w-screen h-screen">
-      <Map
-        key={basemap}
-        {...viewState}
-        onMove={(evt) => setViewState(evt.viewState)}
-        style={{ width: '100%', height: '100%' }}
-        mapStyle={basemaps[basemap]}
-        mapLib={maplibregl}
-        ref={mapRef}
-      >
-        <DrawControl
-          ref={drawRef}
-          position="top-left"
-          displayControlsDefault={false}
-          controls={{
-            polygon: true,
-            trash: true,
-          }}
-          defaultMode="draw_polygon"
-          onCreate={onUpdate}
-          onUpdate={onUpdate}
-          onDelete={onDelete}
-        />
-        <div className="absolute top-4 right-4 flex space-x-2 bg-white p-2 rounded-lg shadow-lg z-10">
-          <button
-            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-              basemap === 'positron'
-                ? 'bg-blue-500 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
-            onClick={() => handleBasemapChange('positron')}
-          >
-            Positron
-          </button>
-          <button
-            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-              basemap === 'satellite'
-                ? 'bg-blue-500 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
-            onClick={() => handleBasemapChange('satellite')}
-          >
-            Satellite
-          </button>
-        </div>
-      </Map>
-      <ControlPanel polygons={Object.values(features)} />
+    <div className="relative h-screen w-full">
+      <div className="absolute top-4 left-4 flex space-x-2 bg-white p-2 rounded-lg shadow-lg z-10">
+        <button
+          className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+            basemap === 'positron'
+              ? 'bg-blue-500 text-white'
+              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+          }`}
+          onClick={() => handleBasemapChange('positron')}
+        >
+          Positron
+        </button>
+        <button
+          className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+            basemap === 'satellite'
+              ? 'bg-blue-500 text-white'
+              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+          }`}
+          onClick={() => handleBasemapChange('satellite')}
+        >
+          Satellite
+        </button>
+      </div>
+
+      <div ref={mapContainer} id="map" className="h-full w-full" />
+      <ControlPanel polygons={polygons} />
     </div>
   );
-}
+};
 
-export function renderToDom(container: HTMLElement) {
-  import('react-dom/client').then(({ createRoot }) => {
-    createRoot(container).render(<App />);
-  });
-}
+export default MapComponent;

@@ -5,6 +5,7 @@ function ControlPanel(props) {
   let polygonArea = 0;
   for (const polygon of props.polygons) {
     polygonArea += area(polygon);
+    // console.log(polygon);
   }
 
   return (

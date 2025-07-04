@@ -9,6 +9,8 @@ import type { Feature, FeatureCollection, Polygon } from 'geojson';
 
 import ControlPanel from './control-panel';
 import { initDrawControl } from './draw-control';
+import { feature } from '@turf/turf';
+import type { GeoJsonProperties } from 'geojson';
 
 const basemaps = {
   positron: 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json',
@@ -25,6 +27,17 @@ const MapComponent: React.FC = () => {
   const handleBasemapChange = useCallback((newBasemap: string) => {
     setBasemap(newBasemap as keyof typeof basemaps);
   }, []);
+
+  const manageCreateForm = useCallback((features: Feature<Polygon, GeoJsonProperties>[]) => {
+    // (parameter) features: Feature<Polygon, GeoJsonProperties>[]
+    // return nothing and console log tha twe created the form
+    if (!features || features.length === 0) {
+      console.error('No features provided for form creation');
+      return;
+    }
+    console.log('Created form for feature:', features[0]);
+  }
+  , []);
 
   useEffect(() => {
     if (!mapContainer.current) return;
@@ -51,6 +64,7 @@ const MapComponent: React.FC = () => {
       draw.current = initDrawControl({
         map: map.current,
         onUpdate: (features) => setPolygons(features),
+        onCreate: (features) => manageCreateForm(features)
       });
     });
 
@@ -82,6 +96,8 @@ const MapComponent: React.FC = () => {
   }, [basemap]);
 
   return (
+
+
     <div className="relative h-screen w-full">
       <div className="absolute top-4 left-4 flex space-x-2 bg-white p-2 rounded-lg shadow-lg z-10">
         <button

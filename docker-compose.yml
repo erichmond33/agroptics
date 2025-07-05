@@ -27,11 +27,8 @@ services:
     command: sh -c "npm run build && npm start"
   db:
     image: mysql:8
-    environment:
-      - MYSQL_DATABASE=geo_weather
-      - MYSQL_USER=admin
-      - MYSQL_PASSWORD=password
-      - MYSQL_ROOT_PASSWORD=rootpassword
+    env_file:
+      - .env.local
     ports:
       - "3306:3306"
     volumes:

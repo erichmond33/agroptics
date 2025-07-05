@@ -1,33 +1,52 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.haversineDistance = haversineDistance;
-exports.calculateCentroid = calculateCentroid;
-// Haversine formula to calculate distance between two points (in kilometers)
-function haversineDistance(lat1, lon1, lat2, lon2) {
-    const R = 6371;
-    const dLat = (lat2 - lat1) * Math.PI / 180;
-    const dLon = (lon2 - lon1) * Math.PI / 180;
-    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-            Math.sin(dLon / 2) * Math.sin(dLon / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c;
-}
-// Calculate centroid of a polygon
-function calculateCentroid(coordinates) {
-    let xSum = 0, ySum = 0, area = 0, n = coordinates.length;
-    for (let i = 0; i < n - 1; i++) {
-        const x0 = coordinates[i][0];
-        const y0 = coordinates[i][1];
-        const x1 = coordinates[i + 1][0];
-        const y1 = coordinates[i + 1][1];
-        const a = x0 * y1 - x1 * y0;
-        area += a;
-        xSum += (x0 + x1) * a;
-        ySum += (y0 + y1) * a;
+exports.findClosestStation = exports.haversineDistance = exports.calculateCentroid = exports.createSuccessResponse = exports.createErrorResponse = void 0;
+// API Response Utilities
+const createErrorResponse = (message, details) => (Object.assign({ error: message }, (details && { details })));
+exports.createErrorResponse = createErrorResponse;
+const createSuccessResponse = (message, data, field) => (Object.assign(Object.assign({ message }, (data && { data })), (field && { field })));
+exports.createSuccessResponse = createSuccessResponse;
+// Geographic Utility Functions
+const calculateCentroid = (coordinates) => {
+    let totalLat = 0;
+    let totalLon = 0;
+    for (const coord of coordinates) {
+        totalLon += coord[0]; // longitude
+        totalLat += coord[1]; // latitude
     }
-    area /= 2;
-    xSum /= (6 * area);
-    ySum /= (6 * area);
-    return { lon: xSum, lat: ySum };
-}
+    return {
+        lat: totalLat / coordinates.length,
+        lon: totalLon / coordinates.length,
+    };
+};
+exports.calculateCentroid = calculateCentroid;
+const haversineDistance = (lat1, lon1, lat2, lon2) => {
+    const R = 6371; // Earth's radius in kilometers
+    const dLat = toRadians(lat2 - lat1);
+    const dLon = toRadians(lon2 - lon1);
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(toRadians(lat1)) *
+            Math.cos(toRadians(lat2)) *
+            Math.sin(dLon / 2) *
+            Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c; // Distance in kilometers
+};
+exports.haversineDistance = haversineDistance;
+const findClosestStation = (centroid, stations) => {
+    let closestStation = null;
+    let minDistance = Infinity;
+    for (const station of stations) {
+        const distance = (0, exports.haversineDistance)(centroid.lat, centroid.lon, station.latitude, station.longitude);
+        if (distance < minDistance) {
+            minDistance = distance;
+            closestStation = station;
+        }
+    }
+    return closestStation ? { station: closestStation, distance: minDistance } : null;
+};
+exports.findClosestStation = findClosestStation;
+// Helper function
+const toRadians = (degrees) => {
+    return degrees * (Math.PI / 180);
+};

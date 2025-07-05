@@ -21,40 +21,153 @@ const zod_middleware_1 = require("./middleware/zod.middleware");
 const geoUtils_1 = require("./utils/geoUtils");
 const app = (0, express_1.default)();
 const port = 3001;
-// Enable CORS for all routes
+// Middleware
 app.use((0, cors_1.default)());
-// Parse JSON request bodies
 app.use(express_1.default.json());
-// PUT endpoint to update field name and/or description
-app.put("/api/field/:id", zod_middleware_1.validateFieldUpdate, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { id } = req.params;
-    const { name, description } = req.body;
-    // Ensure at least one field is provided for update
-    if (!name && !description) {
-        res.status(400).json({
-            error: "Invalid input",
-            details: [
-                {
-                    message: "At least one field (name or description) must be provided",
-                    path: [],
-                },
-            ],
-        });
+// Database connection test
+app.get("/api", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const [rows] = yield db_1.pool.query("SELECT 1 AS test");
+        res.json((0, geoUtils_1.createSuccessResponse)("Database connection successful", rows));
+    }
+    catch (error) {
+        console.error("Database connection error:", error);
+        res.status(500).json((0, geoUtils_1.createErrorResponse)("Database connection failed"));
+    }
+}));
+// Get all fields
+app.get("/api/fields", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const [rows] = yield db_1.pool.query("SELECT * FROM fields ORDER BY name");
+        res.json(rows);
+    }
+    catch (error) {
+        console.error("Failed to fetch fields:", error);
+        res.status(500).json((0, geoUtils_1.createErrorResponse)("Failed to fetch fields"));
+    }
+}));
+// Create a new field
+app.post("/api/field", zod_middleware_1.validateField, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { name, description, geojson } = req.body;
+    try {
+        const [result] = yield db_1.pool.query("INSERT INTO fields (name, description, geojson) VALUES (?, ?, ?)", [name, description, JSON.stringify(geojson)]);
+        const [newField] = yield db_1.pool.query("SELECT * FROM fields WHERE id = LAST_INSERT_ID()");
+        res.status(201).json((0, geoUtils_1.createSuccessResponse)("Field created successfully", undefined, newField[0]));
+    }
+    catch (error) {
+        console.error("Failed to create field:", error);
+        res.status(500).json((0, geoUtils_1.createErrorResponse)("Failed to create field"));
+    }
+}));
+// Get weather data for a field
+app.get("/api/weather/:id", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const fieldId = parseInt(req.params.id);
+    if (isNaN(fieldId)) {
+        res.status(400).json((0, geoUtils_1.createErrorResponse)("Invalid field ID"));
         return;
     }
     try {
-        // Check if the field exists
-        const [existingField] = yield db_1.pool.query("SELECT * FROM fields WHERE id = ?", [id]);
-        if (existingField.length === 0) {
-            res.status(404).json({
-                error: "Field not found",
-                details: [
-                    { message: `Field with id ${id} does not exist`, path: ["id"] },
-                ],
-            });
+        // Get field data
+        const [rows] = yield db_1.pool.query("SELECT geojson FROM fields WHERE id = ?", [fieldId]);
+        const fieldData = rows[0];
+        if (!fieldData) {
+            res.status(404).json((0, geoUtils_1.createErrorResponse)("Field not found"));
             return;
         }
-        // Build the update query dynamically based on provided fields
+        // Calculate centroid
+        const geojson = fieldData.geojson;
+        const coordinates = geojson.geometry.coordinates[0];
+        const centroid = (0, geoUtils_1.calculateCentroid)(coordinates);
+        // Find closest station
+        const stationsPath = path_1.default.join(__dirname, "stations.json");
+        const stationsData = JSON.parse(fs_1.default.readFileSync(stationsPath, "utf8"));
+        const stations = stationsData.stations;
+        const closestResult = (0, geoUtils_1.findClosestStation)(centroid, stations);
+        if (!closestResult) {
+            res.status(404).json((0, geoUtils_1.createErrorResponse)("No weather station found"));
+            return;
+        }
+        const { station: closestStation } = closestResult;
+        // Fetch weather data
+        const response = yield fetch(closestStation.url);
+        if (!response.ok) {
+            throw new Error(`Weather API returned status ${response.status}`);
+        }
+        const weatherData = yield response.json();
+        res.json(weatherData);
+    }
+    catch (error) {
+        console.error("Failed to fetch weather data:", error);
+        res.status(500).json((0, geoUtils_1.createErrorResponse)("Failed to fetch weather data"));
+    }
+}));
+// Delete field by ID
+app.delete("/api/field/:id", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const fieldId = req.params.id;
+    if (!fieldId || isNaN(parseInt(fieldId))) {
+        res.status(400).json((0, geoUtils_1.createErrorResponse)("Invalid field ID"));
+        return;
+    }
+    try {
+        const [result] = yield db_1.pool.query("DELETE FROM fields WHERE id = ?", [fieldId]);
+        if (result.affectedRows === 0) {
+            res.status(404).json((0, geoUtils_1.createErrorResponse)("Field not found"));
+            return;
+        }
+        res.status(200).json((0, geoUtils_1.createSuccessResponse)("Field deleted successfully"));
+    }
+    catch (error) {
+        console.error("Failed to delete field:", error);
+        res.status(500).json((0, geoUtils_1.createErrorResponse)("Failed to delete field"));
+    }
+}));
+// Delete field by GeoJSON ID
+app.delete("/api/field/geojson/:geojsonId", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const geojsonId = req.params.geojsonId;
+    if (!geojsonId) {
+        res.status(400).json((0, geoUtils_1.createErrorResponse)("Invalid GeoJSON ID"));
+        return;
+    }
+    try {
+        const [result] = yield db_1.pool.query("DELETE FROM fields WHERE JSON_EXTRACT(geojson, '$.id') = ?", [geojsonId]);
+        if (result.affectedRows === 0) {
+            res.status(404).json((0, geoUtils_1.createErrorResponse)("Field not found"));
+            return;
+        }
+        res.status(200).json((0, geoUtils_1.createSuccessResponse)("Field deleted successfully"));
+    }
+    catch (error) {
+        console.error("Failed to delete field by GeoJSON ID:", error);
+        res.status(500).json((0, geoUtils_1.createErrorResponse)("Failed to delete field"));
+    }
+}));
+// Update field name and/or description
+app.put("/api/field/:id", zod_middleware_1.validateFieldUpdate, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { id } = req.params;
+    const { name, description } = req.body;
+    if (!id || isNaN(parseInt(id))) {
+        res.status(400).json((0, geoUtils_1.createErrorResponse)("Invalid field ID"));
+        return;
+    }
+    if (!name && !description) {
+        res.status(400).json((0, geoUtils_1.createErrorResponse)("Invalid input", [
+            {
+                message: "At least one field (name or description) must be provided",
+                path: [],
+            },
+        ]));
+        return;
+    }
+    try {
+        // Check if field exists
+        const [existingField] = yield db_1.pool.query("SELECT * FROM fields WHERE id = ?", [id]);
+        if (existingField.length === 0) {
+            res.status(404).json((0, geoUtils_1.createErrorResponse)("Field not found", [
+                { message: `Field with id ${id} does not exist`, path: ["id"] },
+            ]));
+            return;
+        }
+        // Build dynamic update query
         const updates = [];
         const values = [];
         if (name) {
@@ -65,126 +178,21 @@ app.put("/api/field/:id", zod_middleware_1.validateFieldUpdate, (req, res) => __
             updates.push("description = ?");
             values.push(description);
         }
-        values.push(id); // Add ID for the WHERE clause
-        // Execute the update query
+        values.push(id);
+        // Execute update
         yield db_1.pool.query(`UPDATE fields SET ${updates.join(", ")} WHERE id = ?`, values);
-        // Fetch the updated field
+        // Fetch updated field
         const [updatedField] = yield db_1.pool.query("SELECT * FROM fields WHERE id = ?", [id]);
-        res.status(200).json({
-            message: "Field updated successfully",
-            field: updatedField[0],
-        });
-    }
-    catch (err) {
-        console.error("Failed to update field:", err);
-        res.status(500).json({
-            error: "Failed to update field",
-            details: [{ message: "An unexpected error occurred", path: [] }],
-        });
-        return;
-    }
-}));
-app.post("/api/field", zod_middleware_1.validateField, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { name, description, geojson } = req.body;
-    try {
-        const [result] = yield db_1.pool.query("INSERT INTO fields (name, description, geojson) VALUES (?, ?, ?)", [name, description, JSON.stringify(geojson)]);
-        const [newField] = yield db_1.pool.query("SELECT * FROM fields WHERE id = LAST_INSERT_ID()");
-        res.status(201).json({
-            message: "Field created successfully",
-            field: newField[0],
-        });
-    }
-    catch (err) {
-        console.error("Failed to create field:", err);
-        res.status(500).json({ error: "Failed to create field" });
-    }
-}));
-// New endpoint to find the closest station
-app.get("/api/weather/:id", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const fieldId = parseInt(req.params.id);
-    try {
-        // Query the database for the field's geojson
-        const [rows] = yield db_1.pool.query("SELECT geojson FROM fields WHERE id = ?", [
-            fieldId,
-        ]);
-        const field = rows[0];
-        // Parse geojson and extract coordinates
-        const geojson = field.geojson;
-        const coordinates = geojson.geometry.coordinates[0]; // First ring of the polygon
-        const centroid = (0, geoUtils_1.calculateCentroid)(coordinates);
-        // Calculate distance to each station
-        let closestStation = null;
-        let minDistance = Infinity;
-        // Load stations data
-        const stationsPath = path_1.default.join(__dirname, "stations.json");
-        const stationsData = JSON.parse(fs_1.default.readFileSync(stationsPath, "utf8")).stations;
-        for (const station of stationsData) {
-            const distance = (0, geoUtils_1.haversineDistance)(centroid.lat, centroid.lon, station.latitude, station.longitude);
-            if (distance < minDistance) {
-                minDistance = distance;
-                closestStation = station;
-            }
-        }
-        try {
-            const response = yield fetch(closestStation.url);
-            const weatherData = yield response.json();
-            res.json(weatherData);
-        }
-        catch (err) {
-            res
-                .status(500)
-                .json({ error: "Failed to fetch weather data from closest station" });
-        }
-    }
-    catch (err) {
-        console.error(err);
-        res.status(500).json({ error: "Failed to calculate closest station" });
-    }
-}));
-app.get("/api", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    try {
-        const [rows] = yield db_1.pool.query("SELECT 1 AS test");
-        res.json({ message: "Database connection successful", data: rows });
+        res.status(200).json((0, geoUtils_1.createSuccessResponse)("Field updated successfully", undefined, updatedField[0]));
     }
     catch (error) {
-        console.error("Database connection error:", error);
-        res.status(500).json({ error: "Database connection failed" });
+        console.error("Failed to update field:", error);
+        res.status(500).json((0, geoUtils_1.createErrorResponse)("Failed to update field", [
+            { message: "An unexpected error occurred", path: [] },
+        ]));
     }
 }));
-app.get("/api/fields", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    try {
-        const [rows] = yield db_1.pool.query("SELECT * FROM fields ORDER BY name");
-        res.json(rows);
-    }
-    catch (error) {
-        console.error("Failed to fetch fields:", error);
-        res.status(500).json({ error: "Failed to fetch fields" });
-    }
-}));
-app.delete("/api/field/:id", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const fieldId = req.params.id;
-    try {
-        const [result] = yield db_1.pool.query("DELETE FROM fields WHERE id = ?", [
-            fieldId,
-        ]);
-        res.status(200).json({ message: "Field deleted successfully" });
-    }
-    catch (err) {
-        console.error("Failed to delete field:", err);
-        res.status(500).json({ error: "Failed to delete field" });
-    }
-}));
-app.delete("/api/field/geojson/:geojsonId", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const geojsonId = req.params.geojsonId;
-    try {
-        const [result] = yield db_1.pool.query("DELETE FROM fields WHERE JSON_EXTRACT(geojson, '$.id') = ?", [geojsonId]);
-        res.status(200).json({ message: "Field deleted successfully" });
-    }
-    catch (err) {
-        console.error("Failed to delete field by GeoJSON ID:", err);
-        res.status(500).json({ error: "Failed to delete field" });
-    }
-}));
+// Start server
 app.listen(port, () => {
     console.log(`Backend running on http://localhost:${port}`);
 });

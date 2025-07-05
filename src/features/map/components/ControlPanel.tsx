@@ -23,6 +23,8 @@ function ControlPanel({ selectedFeature }: ControlPanelProps) {
           <h4 className="text-md font-bold mb-1">Area</h4>
           <p className="text-sm">
             {Math.round(polygonArea * 100) / 100} m²
+            <br />
+            {Math.round(polygonArea * 0.000247105 * 100) / 100} acres
           </p>
         </>
       ) : (
@@ -37,7 +39,9 @@ function ControlPanel({ selectedFeature }: ControlPanelProps) {
       {selectedFeature?.properties?.description && (
         <div className="mt-2">
           <h4 className="text-md font-bold mb-1">Description</h4>
-          <p className="text-sm text-gray-700">{selectedFeature?.properties?.description}</p>
+          <p className="text-sm text-gray-700 max-w-full break-all">
+            {selectedFeature?.properties?.description}
+          </p>
         </div>
       )}
       {selectedFeature?.properties?.name && (

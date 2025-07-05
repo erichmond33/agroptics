@@ -19,6 +19,7 @@
       }
     ],
     "paths": {
+      "@map/*": ["./src/features/map/*"],
       "@/*": ["./src/*"]
     }
   },

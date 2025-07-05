@@ -142,6 +142,7 @@ export function initDrawControl({ map, onUpdate, onSelected, onDelete }: InitDra
   // Listen to necessary events
   map.on('draw.delete', updatePolygons);
   map.on('draw.update', updatePolygons);
+  // map.on('draw.create', updatePolygons);
   map.on('draw.selectionchange', selectPolygon);
   map.on('draw.delete', deletePolygon);
 

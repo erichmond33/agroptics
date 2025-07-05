@@ -9,8 +9,9 @@ import ControlPanel from './control-panel';
 import FeatureForm from './feature-form';
 import { initDrawControl } from './draw-control';
 import BasemapSwitcher from './basemap-switcher';
-import Legend from './Legend';
+import Legend from './legend';
 import { featureCollection } from '@turf/turf';
+import WeatherViewer from './WeatherViewer';
 
 const basemaps = {
   positron: 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json',
@@ -23,7 +24,7 @@ export default function App() {
   const draw = useRef<mapboxgl.Draw | null>(null);
   const [polygons, setPolygons] = useState<Feature<Polygon>[]>([]);
   const [basemap, setBasemap] = useState<keyof typeof basemaps>('positron');
-  const [selectedFeature, setSelectedFeature] = useState<Feature<Polygon> | null>(null);
+  const [selectedFeature, setSelectedFeature] = useState<Feature<Polygon, GeoJsonProperties> | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [layerVisibility, setLayerVisibility] = useState<{ [key: string]: boolean }>({});
   const existingFeatures = useRef<FeatureCollection<Polygon> | null>(null);
@@ -68,6 +69,7 @@ export default function App() {
         const drawFeatures = featureCollection(fields.features);
         draw.current?.set(drawFeatures);
       }
+      console.log('Existing features loaded:', fields);
     });
   };
 
@@ -102,16 +104,29 @@ export default function App() {
       });
 
       if (response.ok) {
-        const featureId = data.feature.id?.toString() || JSON.stringify(data.feature.geometry.coordinates);
-        setPolygons((prev) => [
-          ...prev,
-          { ...data.feature, properties: { name: data.name, description: data.description } },
-        ]);
+        const responseData = await response.json();
+        const savedField = responseData.field; // Extract the returned field object
+
+        // Ensure the savedField has the expected structure
+        const featureId = savedField.id?.toString() || data.feature.id?.toString() || JSON.stringify(data.feature.geometry.coordinates);
+
+        // Create the updated feature using returned field data
+        const updatedFeature = {
+          ...data.feature,
+          properties: {
+            ...data.feature.properties, // Preserve existing properties
+            id: featureId, // Use the server-returned ID
+            name: savedField.name, // Use server-returned name
+            description: savedField.description, // Use server-returned description
+          },
+        };
+
+        setPolygons((prev) => [...prev, updatedFeature]);
         setLayerVisibility((prev) => ({ ...prev, [featureId]: true }));
         setShowForm(false);
-        setSelectedFeature(data.feature);
+        setSelectedFeature(updatedFeature);
+
         loadFeaturesToMap();
-        alert('Feature saved successfully');
       } else {
         alert('Failed to save feature');
       }
@@ -168,7 +183,7 @@ export default function App() {
     map.current = new maplibregl.Map({
       container: mapContainer.current,
       style: basemaps[basemap],
-      center: [-91.874, 42.76],
+      center: [-104.033, 40.097],
       zoom: 12,
     });
 
@@ -188,7 +203,10 @@ export default function App() {
 
       draw.current = initDrawControl({
         map: map.current,
-        onUpdate: (features) => setPolygons(features),
+        onUpdate: (features) => {
+          console.log('Draw update event triggered: ', features);
+          setPolygons(features);
+        },
         onSelected: (feature) => manageCreateForm(feature),
         onDelete: (featureId) => deletePolygon(featureId),
       });

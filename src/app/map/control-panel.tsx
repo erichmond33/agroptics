@@ -1,6 +1,7 @@
 import * as React from 'react';
 import area from '@turf/area';
 import type { Feature, Polygon } from 'geojson';
+import WeatherViewer from './WeatherViewer';
 
 interface ControlPanelProps {
   selectedFeature: Feature<Polygon> | null;
@@ -37,6 +38,11 @@ function ControlPanel({ selectedFeature }: ControlPanelProps) {
         <div className="mt-2">
           <h4 className="text-md font-bold mb-1">Description</h4>
           <p className="text-sm text-gray-700">{selectedFeature?.properties?.description}</p>
+        </div>
+      )}
+      {selectedFeature?.properties?.name && (
+        <div className="mt-2">
+          <WeatherViewer selectedFeature={selectedFeature} />
         </div>
       )}
     </div>

@@ -7,7 +7,7 @@ export default function BasemapSwitcher({ basemap, onChange }) {
       <button
         className={`w-full px-4 py-2 rounded-md text-sm font-medium transition-colors ${
           basemap === 'positron'
-            ? 'bg-blue-500 text-white'
+            ? 'bg-blue-600 text-white'
             : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
         }`}
         onClick={() => onChange('positron')}
@@ -17,7 +17,7 @@ export default function BasemapSwitcher({ basemap, onChange }) {
       <button
         className={`w-full px-4 py-2 rounded-md text-sm font-medium transition-colors ${
           basemap === 'satellite'
-            ? 'bg-blue-500 text-white'
+            ? 'bg-blue-600 text-white'
             : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
         }`}
         onClick={() => onChange('satellite')}

@@ -1,0 +1,22 @@
+{
+  "stations": [
+    {
+      "stationName": "STG02",
+      "latitude": 40.5833,
+      "longitude": -103.142,
+      "url": "https://coagmet.colostate.edu/data/nw/daily/STG02.json?header=yes&from=2025-06-01&to=2025-06-02&dateFmt=iso&units=m&fields=tMax,tMin,rhMax,rhMin,precip"
+    },
+    {
+      "stationName": "WGP01",
+      "latitude": 40.097,
+      "longitude": -105.972,
+      "url": "https://coagmet.colostate.edu/data/nw/daily/WGP01.json?header=yes&from=2025-06-01&to=2025-06-27&dateFmt=iso&units=m&fields=tMax,tMin,rhMax,rhMin,precip"
+    },
+    {
+      "stationName": "WIG01",
+      "latitude": 40.3144,
+      "longitude": -104.033,
+      "url": "https://coagmet.colostate.edu/data/nw/daily/WIG01.json?header=yes&from=2025-06-01&to=2025-06-27&dateFmt=iso&units=m&fields=tMax,tMin,rhMax,rhMin,precip"
+    }
+  ]
+}

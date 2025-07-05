@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.haversineDistance = haversineDistance;
 exports.calculateCentroid = calculateCentroid;
+// Haversine formula to calculate distance between two points (in kilometers)
 function haversineDistance(lat1, lon1, lat2, lon2) {
     const R = 6371;
     const dLat = (lat2 - lat1) * Math.PI / 180;

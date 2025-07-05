@@ -1,9 +1,11 @@
+-- Create users table if it doesn't exist
 CREATE TABLE IF NOT EXISTS users (
   id INT AUTO_INCREMENT PRIMARY KEY,
   username VARCHAR(255) NOT NULL UNIQUE,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Create fields table if it doesn't exist
 CREATE TABLE IF NOT EXISTS fields (
   id INT AUTO_INCREMENT PRIMARY KEY,
   user_id INT NOT NULL DEFAULT 1,
@@ -14,4 +16,18 @@ CREATE TABLE IF NOT EXISTS fields (
   FOREIGN KEY (user_id) REFERENCES users(id)
 );
 
+-- Insert default user if not exists
 INSERT IGNORE INTO users (id, username) VALUES (1, 'default_user');
+
+-- Insert the init field
+INSERT INTO fields (id, user_id, name, description, geojson) 
+VALUES (
+  1,
+  1,
+  'db init field',
+  'This field was created on startup.',
+  '{"id": "zKVvDUfWMxb1Wm2xThQbBWXPgMS3MGdS", "type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-104.03467356181606, 40.107930931540665], [-104.0394371974276, 40.10235076689244], [-104.0267341691305, 40.10235076689244], [-104.03467356181606, 40.107930931540665]]]}, "properties": {}}'
+);
+
+-- Confirm execution
+SELECT 'Init script executed' AS message;

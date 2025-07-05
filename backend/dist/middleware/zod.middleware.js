@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.validateField = exports.FieldSchema = void 0;
+exports.validateFieldUpdate = exports.FieldUpdateSchema = exports.validateField = exports.FieldSchema = void 0;
 const zod_1 = require("zod");
 const turf = __importStar(require("@turf/turf"));
 // Define Zod schema for GeoJSON
@@ -82,3 +82,41 @@ const validateField = (req, res, next) => {
     }
 };
 exports.validateField = validateField;
+// Zod schema for field update (excluding geojson)
+exports.FieldUpdateSchema = zod_1.z.object({
+    name: zod_1.z
+        .string()
+        .min(1, 'Name is required')
+        .max(20, 'Name must be 20 characters or less')
+        .optional(),
+    description: zod_1.z
+        .string()
+        .max(200, 'Description must be 200 characters or less')
+        .optional(),
+});
+// Middleware to validate field update
+const validateFieldUpdate = (req, res, next) => {
+    try {
+        const validatedData = exports.FieldUpdateSchema.parse(req.body);
+        req.body = validatedData; // Replace request body with validated data
+        next();
+    }
+    catch (err) {
+        if (err instanceof zod_1.ZodError) {
+            res.status(400).json({
+                error: 'Invalid input',
+                details: err.errors.map((e) => ({
+                    message: e.message,
+                    path: e.path,
+                })),
+            });
+            return;
+        }
+        res.status(500).json({
+            error: 'Server error during validation',
+            details: [{ message: 'An unexpected error occurred', path: [] }],
+        });
+        return;
+    }
+};
+exports.validateFieldUpdate = validateFieldUpdate;

@@ -1,36 +1,59 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Geo-Weather Field Visualizer
 
-## Getting Started
-
-First, run the development server:
-
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+### Setup with Docker
+```zsh
+git clone https://github.com/erichmond33/agroptics.git
+cd agroptics
+cp env.example .env.local
+docker compose up --build
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Architectural Overview
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Here is a tree of the most important files which I'll use to reference the key components of this project.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```zsh
+agroptics/
+├── backend/
+│   └── src/
+│       ├── db/
+│       │   └── init.sql
+│       ├── middleware/
+│       │   └── zod.middleware.ts
+│       ├── utils/
+│       │   └── geoUtils.ts
+│       ├── db.ts
+│       └── index.ts
+├── components/        
+├── node_modules/      
+├── public/            
+├── src/
+│   ├── app/
+│   │   └── page.tsx
+│   └── features/
+│       └── map/
+│           ├── components/
+│           │   ├── BasemapSwitcher.tsx
+│           │   ├── ControlPanel.tsx
+│           │   ├── FeatureForm.tsx
+│           │   ├── Legend.tsx
+│           │   └── WeatherViewer.tsx
+│           ├── styles/
+│           │   └── mapboxDrawStyles.tsx
+│           └── utils/
+│               ├── backendApi.tsx
+│               ├── drawControl.tsx
+│               └── mapManager.tsx
+```
 
-## Learn More
+So the frontend is the root directory with the entirety of the backend housed with agroptics/backend. Let's break down the backend files and structure first.
 
-To learn more about Next.js, take a look at the following resources:
+The bulk of the express.js backend is in index.ts – here you can find all the GET, POST, PUT, and DELETE functions. index.ts relies on utils/geoUtils.ts for some helper functions mainly related to calculating the distance to the nearest weather station. The schema is defined and seeded in init.sql, and our validation is done through Zod with zod.middleware.ts.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+For the frontend, page.tsx is the main file that handles the the maplibre initilization and watches for any event changes with most of the logic abstacted away into either visual components (features/map/components) or into utilites (features/map/utils). The bulk of the application logic is in mapManager.tsx which works closely with drawControl.tsx – these two files manage MapLibre and MapBox Draw. mapManager.tsx also uses methods to call our backendApi.tsx functions.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+The components (BasemapSwitcher.tsx, ControlPanel.tsx, etc) are fairly simple React components with minimal logic to display any information we might need.
 
-## Deploy on Vercel
+### Known Limitations
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+I did not make this responsive; although, it wouldn't be too difficult to do so simply hiding our UI in an offcanvas on smaller screens.

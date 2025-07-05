@@ -2,6 +2,7 @@ import { Feature, Polygon } from 'geojson';
 import { Map as MapLibreMap } from 'maplibre-gl';
 import { Dispatch, SetStateAction } from 'react';
 import { ZoomIn } from 'lucide-react'; // Assuming you use lucide-react for icons
+import { useEffect } from 'react';
 
 interface LegendProps {
   polygons: Feature<Polygon>[];
@@ -11,12 +12,24 @@ interface LegendProps {
 }
 
 export default function Legend({ polygons, map, layerVisibility, setLayerVisibility }: LegendProps) {
-  const handleToggleVisibility = (featureId: string) => {
-    setLayerVisibility((prev) => ({
-      ...prev,
-      [featureId]: !prev[featureId],
-    }));
+const handleToggleVisibility = (featureId: string) => {
+    console.log(`Toggling visibility for feature ID: ${featureId}`);
+    console.log(`Current visibility state:`, layerVisibility);
+    setLayerVisibility({
+      [featureId]: !layerVisibility[featureId],
+    });
   };
+
+  useEffect(() => {
+    if (!map) return;
+
+    Object.keys(layerVisibility).forEach((featureId) => {
+      const visibility = layerVisibility[featureId] ? 'visible' : 'none';
+      if (map.getLayer(featureId)) {
+        map.setLayoutProperty(featureId, 'visibility', visibility);
+      }
+    });
+  }, [layerVisibility, map]);
 
   const handleZoomToLayer = (feature: Feature<Polygon>) => {
     if (!map || !feature.geometry.coordinates[0]) return;

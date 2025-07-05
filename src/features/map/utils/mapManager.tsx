@@ -74,16 +74,25 @@ export class MapManager {
     try {
       const featureCollection = await getFields();
       if (featureCollection) {
-        this.existingFeatures = featureCollection;
-        const visibility = this.createVisibilityMap(featureCollection.features);
-        
-        this.setState(prev => ({
-          ...prev,
-          polygons: featureCollection.features,
-          layerVisibility: visibility
+        const featuresWithIds = featureCollection.features.map((feature, index) => ({
+          ...feature,
+          id: this.getFeatureId(feature) || `feature-${index}`,
         }));
 
-        this.updateDrawControl(featureCollection);
+        const visibility = this.createVisibilityMap(featuresWithIds);
+
+        this.existingFeatures = {
+          ...featureCollection,
+          features: featuresWithIds,
+        };
+
+        this.setState(prev => ({
+          ...prev,
+          polygons: featuresWithIds,
+          layerVisibility: visibility,
+        }));
+
+        this.updateDrawControl({ ...featureCollection, features: featuresWithIds });
       }
     } catch (error) {
       console.error('Error loading existing fields:', error);
@@ -98,8 +107,14 @@ export class MapManager {
   }
 
   private getFeatureId(feature: Feature<Polygon>): string {
-    return feature.id?.toString() || 
-           feature.properties?.id?.toString() || 
+    return feature.id?.toString() ||
+           feature.properties?.id?.toString() || '';
+
+  }
+  
+  private getDatabaseFeatureId(feature: Feature<Polygon>): string {
+    console.log(feature);
+    return feature.properties?.id?.toString() || 
            JSON.stringify(feature.geometry.coordinates);
   }
 
@@ -158,6 +173,7 @@ export class MapManager {
 
       const updatedFeature = {
         ...data.feature,
+        id: featureId,
         properties: {
           ...data.feature.properties,
           id: responseData.field.id,
@@ -219,7 +235,7 @@ export class MapManager {
 
     const visibleFeatures = polygons.filter((feature) => {
       const featureId = this.getFeatureId(feature);
-      return layerVisibility[featureId] !== false;
+      return !(featureId in layerVisibility) || layerVisibility[featureId];
     });
 
     this.draw.set(featureCollection(visibleFeatures));

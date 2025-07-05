@@ -68,7 +68,10 @@ export default function App() {
   };
 
   const handleLayerVisibilityChange = (newVisibility: { [key: string]: boolean }) => {
-    setState(prev => ({ ...prev, layerVisibility: newVisibility }));
+    setState(prev => ({
+      ...prev,
+      layerVisibility: { ...prev.layerVisibility, ...newVisibility },
+    }));
   };
 
   return (

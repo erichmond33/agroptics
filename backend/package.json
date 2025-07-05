@@ -24,7 +24,8 @@
     "nodemon": "^3.1.10",
     "react-map-gl": "^8.0.4",
     "ts-node": "^10.9.2",
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "zod": "^3.25.74"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",

@@ -17,41 +17,29 @@ const db_1 = require("./db");
 const fs_1 = __importDefault(require("fs"));
 const path_1 = __importDefault(require("path"));
 const cors_1 = __importDefault(require("cors"));
+const zod_middleware_1 = require("./middleware/zod.middleware");
+const geoUtils_1 = require("./utils/geoUtils");
 const app = (0, express_1.default)();
 const port = 3001;
 // Enable CORS for all routes
 app.use((0, cors_1.default)());
 // Parse JSON request bodies
 app.use(express_1.default.json());
-// Haversine formula to calculate distance between two points (in kilometers)
-function haversineDistance(lat1, lon1, lat2, lon2) {
-    const R = 6371; // Earth's radius in kilometers
-    const dLat = (lat2 - lat1) * Math.PI / 180;
-    const dLon = (lon2 - lon1) * Math.PI / 180;
-    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-            Math.sin(dLon / 2) * Math.sin(dLon / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c;
-}
-// Calculate centroid of a polygon
-function calculateCentroid(coordinates) {
-    let xSum = 0, ySum = 0, area = 0, n = coordinates.length;
-    for (let i = 0; i < n - 1; i++) {
-        const x0 = coordinates[i][0];
-        const y0 = coordinates[i][1];
-        const x1 = coordinates[i + 1][0];
-        const y1 = coordinates[i + 1][1];
-        const a = x0 * y1 - x1 * y0;
-        area += a;
-        xSum += (x0 + x1) * a;
-        ySum += (y0 + y1) * a;
+app.post('/api/field', zod_middleware_1.validateField, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { name, description, geojson } = req.body;
+    try {
+        const [result] = yield db_1.pool.query('INSERT INTO fields (name, description, geojson) VALUES (?, ?, ?)', [name, description, JSON.stringify(geojson)]);
+        const [newField] = yield db_1.pool.query('SELECT * FROM fields WHERE id = LAST_INSERT_ID()');
+        res.status(201).json({
+            message: 'Field created successfully',
+            field: newField[0],
+        });
     }
-    area /= 2;
-    xSum /= (6 * area);
-    ySum /= (6 * area);
-    return { lon: xSum, lat: ySum };
-}
+    catch (err) {
+        console.error('Failed to create field:', err);
+        res.status(500).json({ error: 'Failed to create field' });
+    }
+}));
 // New endpoint to find the closest station
 app.get('/api/weather/:id', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const fieldId = parseInt(req.params.id);
@@ -62,7 +50,7 @@ app.get('/api/weather/:id', (req, res) => __awaiter(void 0, void 0, void 0, func
         // Parse geojson and extract coordinates
         const geojson = field.geojson;
         const coordinates = geojson.geometry.coordinates[0]; // First ring of the polygon
-        const centroid = calculateCentroid(coordinates);
+        const centroid = (0, geoUtils_1.calculateCentroid)(coordinates);
         // Calculate distance to each station
         let closestStation = null;
         let minDistance = Infinity;
@@ -70,7 +58,7 @@ app.get('/api/weather/:id', (req, res) => __awaiter(void 0, void 0, void 0, func
         const stationsPath = path_1.default.join(__dirname, 'stations.json');
         const stationsData = JSON.parse(fs_1.default.readFileSync(stationsPath, 'utf8')).stations;
         for (const station of stationsData) {
-            const distance = haversineDistance(centroid.lat, centroid.lon, station.latitude, station.longitude);
+            const distance = (0, geoUtils_1.haversineDistance)(centroid.lat, centroid.lon, station.latitude, station.longitude);
             if (distance < minDistance) {
                 minDistance = distance;
                 closestStation = station;
@@ -88,21 +76,6 @@ app.get('/api/weather/:id', (req, res) => __awaiter(void 0, void 0, void 0, func
     catch (err) {
         console.error(err);
         res.status(500).json({ error: 'Failed to calculate closest station' });
-    }
-}));
-app.post('/api/field', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { name, description, geojson } = req.body;
-    try {
-        const [result] = yield db_1.pool.query('INSERT INTO fields (name, description, geojson) VALUES (?, ?, ?)', [name, description, JSON.stringify(geojson)]);
-        const [newField] = yield db_1.pool.query('SELECT * FROM fields WHERE id = LAST_INSERT_ID()');
-        res.status(201).json({
-            message: 'Field created successfully',
-            field: newField[0],
-        });
-    }
-    catch (err) {
-        console.error('Failed to create field:', err);
-        res.status(500).json({ error: 'Failed to create field' });
     }
 }));
 app.get('/api', (req, res) => __awaiter(void 0, void 0, void 0, function* () {

@@ -57,3 +57,5 @@ The components (BasemapSwitcher.tsx, ControlPanel.tsx, etc) are fairly simple Re
 ### Known Limitations
 
 I did not make this responsive; although, it wouldn't be too difficult to do so simply hiding our UI in an offcanvas on smaller screens. There are likely some Next.js naming or file structure conventions I’m not fully familiar with, but those should be easy to adjust.
+
+While recording the demo, I discovered a minor bug: if you select a field and click “Load Weather Data,” then choose a different field without first deselecting the original, the weather data for the initially selected field is still loaded. This behavior is incorrect.

@@ -56,4 +56,4 @@ The components (BasemapSwitcher.tsx, ControlPanel.tsx, etc) are fairly simple Re
 
 ### Known Limitations
 
-I did not make this responsive; although, it wouldn't be too difficult to do so simply hiding our UI in an offcanvas on smaller screens.
+I did not make this responsive; although, it wouldn't be too difficult to do so simply hiding our UI in an offcanvas on smaller screens. There are likely some Next.js naming or file structure conventions I’m not fully familiar with, but those should be easy to adjust.

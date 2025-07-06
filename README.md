@@ -29,10 +29,7 @@ agroptics/
 │       ├── utils/
 │       │   └── geoUtils.ts
 │       ├── db.ts
-│       └── index.ts
-├── components/        
-├── node_modules/      
-├── public/            
+│       └── index.ts         
 ├── src/
 │   ├── app/
 │   │   └── page.tsx

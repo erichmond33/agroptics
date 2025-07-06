@@ -4,6 +4,8 @@
 
 [Geo-Weather Field Visualizer Demo](https://youtu.be/oTxpSwPaxIo)
 
+![Geo-Weather Screenshot](./Xnapper-2025-07-06-15.02.08.png)
+
 ### Setup With Docker
 ```zsh
 git clone https://github.com/erichmond33/agroptics.git

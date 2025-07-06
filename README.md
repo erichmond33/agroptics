@@ -1,6 +1,10 @@
 # Geo-Weather Field Visualizer
 
-### Setup with Docker
+### Watch The Video Demo
+
+[Geo-Weather Field Visualizer Demo](https://youtu.be/oTxpSwPaxIo)
+
+### Setup With Docker
 ```zsh
 git clone https://github.com/erichmond33/agroptics.git
 cd agroptics
